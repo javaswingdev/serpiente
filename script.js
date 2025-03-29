@@ -1,63 +1,65 @@
-const player = document.getElementById('player');
-const obstacle = document.getElementById('obstacle');
-const gameArea = document.getElementById('gameArea');
+const canvas = document.getElementById('pong');
+const context = canvas.getContext('2d');
 
-let gameOver = false;
-let playerPosition = gameArea.clientHeight - 50;
-let obstaclePosition = 0;
+const paddleWidth = 10, paddleHeight = 100;
+let playerY = (canvas.height - paddleHeight) / 2;
+let aiY = (canvas.height - paddleHeight) / 2;
+let ballX = canvas.width / 2;
+let ballY = canvas.height / 2;
+let ballSpeedX = 5;
+let ballSpeedY = 5;
 
-function startGame() {
-    obstaclePosition = 0; 
-    obstacle.style.top = obstaclePosition + 'px';
-    gameOver = false;
-    moveObstacle();
-}
+function draw() {
+    // Limpiar el canvas
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-function moveObstacle() {
-    if (gameOver) return;
-    
-    obstaclePosition += 2; // Velocidad de caída del obstáculo
-    obstacle.style.top = obstaclePosition + 'px';
+    // Dibuja paletas y pelota
+    context.fillStyle = 'white';
+    context.fillRect(0, playerY, paddleWidth, paddleHeight);
+    context.fillRect(canvas.width - paddleWidth, aiY, paddleWidth, paddleHeight);
+    context.beginPath();
+    context.arc(ballX, ballY, 10, 0, Math.PI * 2, false);
+    context.fill();
 
-    // Verificar colisiones
-    if (obstaclePosition > gameArea.clientHeight) {
-        obstaclePosition = 0; // Resetea el obstáculo
-        setTimeout(() => {
-            moveObstacle();
-        }, 1000); // Espera para volver a mover
+    // Mueve la pelota
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+
+    // Colisiones con la parte superior/inferior
+    if (ballY < 0 || ballY > canvas.height) {
+        ballSpeedY = -ballSpeedY;
+    }
+
+    // Colisiones con las palas
+    if (ballX < paddleWidth && ballY > playerY && ballY < playerY + paddleHeight) {
+        ballSpeedX = -ballSpeedX;
+    }
+    if (ballX > canvas.width - paddleWidth && ballY > aiY && ballY < aiY + paddleHeight) {
+        ballSpeedX = -ballSpeedX;
+    }
+
+    // Movimiento de la IA
+    if (aiY + paddleHeight / 2 < ballY) {
+        aiY += 4; // Velocidad de la IA, ajustable
     } else {
-        requestAnimationFrame(moveObstacle);
+        aiY -= 4; // Velocidad de la IA, ajustable
     }
     
-    detectCollision();
-}
-
-function detectCollision() {
-    const playerRect = player.getBoundingClientRect();
-    const obstacleRect = obstacle.getBoundingClientRect();
-
-    if (
-        playerRect.x < obstacleRect.x + obstacleRect.width &&
-        playerRect.x + playerRect.width > obstacleRect.x &&
-        playerRect.y < obstacleRect.y + obstacleRect.height &&
-        playerRect.y + playerRect.height > obstacleRect.y
-    ) {
-        gameOver = true;
-        alert("¡Game Over!");
-        startGame();
+    // Colisión de fondo
+    if (ballX < 0 || ballX > canvas.width) {
+        ballX = canvas.width / 2;
+        ballY = canvas.height / 2;
+        ballSpeedX = -ballSpeedX;
     }
 }
 
-document.addEventListener('keydown', (event) => {
-    if (!gameOver) {
-        if (event.key === 'ArrowLeft') {
-            playerPosition -= 10; // Mover a la izquierda
-        } else if (event.key === 'ArrowRight') {
-            playerPosition += 10; // Mover a la derecha
-        }
-        playerPosition = Math.max(0, Math.min(gameArea.clientWidth - 30, playerPosition));
-        player.style.left = playerPosition + 'px';
-    }
-});
+function playerMove(event) {
+    const mouseY = event.clientY - canvas.getBoundingClientRect().top - paddleHeight / 2;
+    playerY = mouseY < 0 ? 0 : (mouseY + paddleHeight > canvas.height ? canvas.height - paddleHeight : mouseY);
+}
 
-startGame();
+// Escuchamos el movimiento del mouse
+canvas.addEventListener('mousemove', playerMove);
+
+// Actualizamos el juego
+setInterval(draw, 1000 / 60);
